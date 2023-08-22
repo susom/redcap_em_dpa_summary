@@ -1,0 +1,56 @@
+{
+    "name": "DPA Summary",
+
+    "namespace": "StanfordMedicine\\DpaSummary",
+
+    "description": "Replacement for plugins/approvals/privacy plugin",
+
+    "documentation": "README.md",
+
+    "framework-version": 14,
+
+    "authors": [
+        {
+            "name": "Susan Weber",
+            "email": "scweber@stanford.edu",
+            "institution": "StanfordMedicine"
+        }
+    ],
+
+    "permissions": [
+        "redcap_save_record"
+    ],
+
+    "enable-every-page-hooks-on-system-pages": false,
+    "links": {
+        "project": [
+
+        ],
+        "control-center": [
+
+        ]
+    },
+
+    "no-auth-pages": [
+
+    ],
+
+    "project-settings": [
+
+    ],
+
+    "system-settings": [
+
+    ],
+
+    "crons": [
+
+    ],
+
+    "compatibility": {
+        "php-version-min": "",
+        "php-version-max": "",
+        "redcap-version-min": "",
+        "redcap-version-max": ""
+    }
+}
