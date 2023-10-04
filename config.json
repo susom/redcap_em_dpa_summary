@@ -1,7 +1,7 @@
 {
     "name": "DPA Summary",
 
-    "namespace": "StanfordMedicine\\DpaSummary",
+    "namespace": "Stanford\\DpaSummary",
 
     "description": "Replacement for plugins/approvals/privacy plugin",
 
@@ -15,10 +15,6 @@
             "email": "scweber@stanford.edu",
             "institution": "StanfordMedicine"
         }
-    ],
-
-    "permissions": [
-        "redcap_save_record"
     ],
 
     "enable-every-page-hooks-on-system-pages": false,
