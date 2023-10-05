@@ -20,7 +20,7 @@ class DpaSummary extends \ExternalModules\AbstractExternalModule {
             return;
         }
 // todo save as EM project setting in the config Json
-        getProjectSetting( 'oncore-api-url');// TODO add project setting for the API token
+        $this->getProjectSetting( 'oncore-api-url');// TODO add project setting for the API token
         //Redcap Data privacy attestation API
         $KVS = \ExternalModules\ExternalModules::getModuleInstance('key-value-store');
         $api_token = $KVS->getValue($project_id, "API_TOKEN");
@@ -43,7 +43,7 @@ class DpaSummary extends \ExternalModules\AbstractExternalModule {
                 'ex_us_inbound' => '0',
                 'ex_us_outbound' => '0'
             );
-            putRecord($data, $api_token);
+            $this->putRecord($data, $api_token);
             $summary = "Prep to Research access to deID STARR-Nav\n\nRequest for access to Research IT generated de-identified STARR-Nav data, a High Risk dataset, for internal use at Stanford\n\n".
                 "We will be internally using at Stanford the following types of data:\nDemographics (age, sex, etc.)\nLab or test results\nDiagnosis or procedure codes\nClinical narratives or non-imaging procedure reports\nPrescriptions or medications\nImaging data or radiology reports*".
                 "Furthermore since we will be working with free text narratives we may be incidentally exposed to the following:\n1. Names\n3. Telephone numbers\n4. Address\n5. Dates more precise than year only\n7. Electronic mail addresses\n8. Medical record numbers\n18. Any other unique identifying number, characteristic, or code\n\n";
@@ -61,6 +61,7 @@ class DpaSummary extends \ExternalModules\AbstractExternalModule {
         $this->emDebug("HERE WE GO - line 74 record ".print_r($this_record, true));
 
 ///
+/// // TODO shorten method. move logic to different method. A role of thumb is method should not exceed 20 lines.
         if ($this_record['summarygeneration_complete'] == 2 && $this_record['approval_complete'] == 2) {
             // check to see whether this invocation comes from a Privacy approval action
             $users = REDCap::getUserRights (  );
@@ -91,7 +92,7 @@ class DpaSummary extends \ExternalModules\AbstractExternalModule {
                 'ex_us_inbound' => '0',
                 'ex_us_outbound' => '0'
             );
-            putRecord($data, $api_token);
+            $this->putRecord($data, $api_token);
             $summary = "Prep to Research access to deID STARR-Nav\n\nRequest for access to Research IT generated de-identified STARR-Nav data, a High Risk dataset, for internal use at Stanford\n\n".
                 "We will be internally using at Stanford the following types of data:\nDemographics (age, sex, etc.)\nLab or test results\nDiagnosis or procedure codes\nClinical narratives or non-imaging procedure reports\nPrescriptions or medications\nImaging data or radiology reports*".
                 "Furthermore since we will be working with free text narratives we may be incidentally exposed to the following:\n1. Names\n3. Telephone numbers\n4. Address\n5. Dates more precise than year only\n7. Electronic mail addresses\n8. Medical record numbers\n18. Any other unique identifying number, characteristic, or code\n\n";
@@ -104,6 +105,7 @@ class DpaSummary extends \ExternalModules\AbstractExternalModule {
 // carry on - the rest of this script generates a summary http://localhost/surveys/?s=THEX47FAHP7LDTFE
 //        $baseurlsurvey = "https://redcap.stanford.edu/webauth/surveys/index.php?s=L3TRTT9EF9&edit=1&prior_version_record_num=".$this_record['record_id']."&prj_type=".$this_record['prj_type']."&irb_or_determination=".$this_record['irb_or_determination'];
 // Ihab: how do I generate the survey URL without hard-coding it?
+        // TODO move base survey url to config.json
         $baseurlsurvey = "http://localhost/surveys/?s=THEX47FAHP7LDTFE&prior_version_record_num=".$this_record['record_id']."&prj_type=".$this_record['prj_type']."&irb_or_determination=".$this_record['irb_or_determination'];
         // Get metadata for supplied API token
         $params = array(
@@ -119,6 +121,7 @@ class DpaSummary extends \ExternalModules\AbstractExternalModule {
         $meta2 = array(); // stash everything - used for rendering the attestation wording in the summary
         $editurl = $baseurlsurvey;
 
+        // TODO create method to build edit url
         if ($this_record['prj_type'] == '1') {
             $editurl .= "&prj_protocol=".$this_record['prj_protocol']."&dtls_id=".$this_record['dtls_id']."&research_dececeased_only=".$this_record['research_dececeased_only'];
         } else {
@@ -164,6 +167,7 @@ class DpaSummary extends \ExternalModules\AbstractExternalModule {
             $this_record['is_irb'] = '';
         }
 
+        // TODO move build summary logic to a separate method.
         // Build our summary
         $is_recruitment = false;
         foreach ($meta_de as $key => $value) {
@@ -253,15 +257,20 @@ class DpaSummary extends \ExternalModules\AbstractExternalModule {
                 $summary .=  "\n". $meta2[$avar] . "\n";
             }
         }
+        // TODO why do you need this?
         date_default_timezone_set('America/Vancouver');
 
         $signature = "\nThis statement was digitally signed '" . $this_record['signature'] . "' on "  . date('F jS Y \a\t h:i:s A') . ' by SUNetID ' . $this_record['webauth_user1'];
         $short_summary .= $signature;
         $summary .= $signature;
 
+        // TODO move ldap url to config.json
+        // TODO move ldap call to a separate method.
         // last but not least look up the display name of the webauthed user
         $ldapUrl = "https://krb5-ldap-app-kbwg24yjgq-uw.a.run.app/webtools/redcap-ldap/redcap_validator_web_service.php?token=0dWhFQtgZN7VkCnDyzsoyZFoZGqKE4oALWMgs2K6JBkRZWS1dN&exact=true&only=displayname,sudisplaynamefirst,sudisplaynamelast,sudisplaynamelf,mail,telephonenumber,suaffiliation,sugwaffiliation1,ou,telephonenumber,suprimaryorganizationid,susunetid&username=";
 
+
+        // TODO use Guzzle client. Maybe create an object in the constructor so you do not have to init everytime you need to make a call.
         # Do LDAP Lookup
         $ldap = file_get_contents($ldapUrl . $this_record['webauth_user1']);
         //      $this->emDebug("ldap: $ldap", "DEBUG");
@@ -493,6 +502,7 @@ class DpaSummary extends \ExternalModules\AbstractExternalModule {
     /* Call this to store data */
     function putRecord($data, $api_token)
     {
+        // TODO create a method to pull $api_url from either config.json or $_SERVER['HTTP_HOST']
         global $api_url;
         $params = array(
             'token' => $api_token,
@@ -503,6 +513,20 @@ class DpaSummary extends \ExternalModules\AbstractExternalModule {
         );
         // $this->emDebug('putRecord PARAMS: ' . print_r($params,true), "DEBUG");	//DEBUG
 
+        // TODO use Guzzle Client for more details: https://docs.guzzlephp.org/en/stable/request-options.html
+        //        $client = new \GuzzleHttp\Client([
+        //                'timeout' => 30,
+        //                'connect_timeout' => 5,
+        //                'verify' => true/false,
+        //            ]
+        //        );
+        //        $response = $client->post($api_url, [
+        //            'debug' => false,
+        //            'body' => json_encode($params),
+        //            'headers' => ['Content-Type' => 'application/json', 'Accept' => 'application/json'],
+        //        ]);
+
+        $client = new  \GuzzleHttp\Client();
         $r = curl_init($api_url);
         curl_setopt($r, CURLOPT_POST, 1);
         curl_setopt($r, CURLOPT_POSTFIELDS, http_build_query($params));
