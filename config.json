@@ -32,7 +32,30 @@
     ],
 
     "project-settings": [
-
+        {
+            "key": "api-token",
+            "name": "<b>API token</b>",
+            "required": true,
+            "type": "text"
+        },
+        {
+            "key": "run-in-test-mode",
+            "name": "<b>When checked, will use http://localhost rather than https://redcap.stanford.edu/webauth for survey URL</b>",
+            "required": false,
+            "type": "checkbox"
+        },
+        {
+            "key": "survey-url",
+            "name": "<b>Survey URL. For testing use survey-url THEX47FAHP7LDTFE ;for prod use  L3TRTT9EF9</b>",
+            "required": true,
+            "type": "text"
+        },
+        {
+            "key": "verify-api-call",
+            "name": "<b>When checked, will verify API calls. Leave unchecked to skip verification</b>",
+            "required": false,
+            "type": "checkbox"
+        }
     ],
 
     "system-settings": [
