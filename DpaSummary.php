@@ -8,22 +8,41 @@ use Project;
 use REDCap;
 class DpaSummary extends \ExternalModules\AbstractExternalModule {
     use emLoggerTrait;
+
+    private $baseurl;
+    private $baseurlsurvey;
+
     public function __construct() {
         parent::__construct();
         // Other code to run when object is instantiated
     }
 
+    private function getBaseUrl(): string
+    {
+        $this->baseurl  = ( $this->getProjectSetting( 'run-in-test-mode') ? "http://localhost/" : "https://redcap.stanford.edu/");
+        return $this->baseurl;
+    }
+
+    private function getBaseUrlSurvey($this_record): string
+    {
+        $this->baseurlsurvey = $this->getBaseUrl() . ( $this->getProjectSetting( 'run-in-test-mode') ? "" : "webauth/") . "/surveys/?s=";
+        $this->baseurlsurvey .= $this->getProjectSetting( 'survey-url');
+// carry on - the rest of this script generates a summary
+// for testing use survey-url THEX47FAHP7LDTFE ;for prod use  L3TRTT9EF9
+//     $baseurlsurvey = "https://redcap.stanford.edu/webauth/surveys/index.php?s=L3TRTT9EF9&edit=1&prior_version_record_num=".$this_record['record_id']."&prj_type=".$this_record['prj_type']."&irb_or_determination=".$this_record['irb_or_determination'];
+
+        $this->baseurlsurvey .= "&prior_version_record_num=".$this_record['record_id']."&prj_type=".$this_record['prj_type']."&irb_or_determination=".$this_record['irb_or_determination'];
+
+        return $this->baseurlsurvey;
+    }
+
     public function redcap_save_record( int $project_id, $record, string $instrument, int $event_id, $group_id, $survey_hash, $response_id, $repeat_instance ): void
     {
-        $this->emError("hello world");
         if (! array_key_exists('webauth_user1', $_POST)) {
+            $this->emError("Unable to save record, unknown user");
             return;
         }
-// todo save as EM project setting in the config Json
-        $this->getProjectSetting( 'oncore-api-url');// TODO add project setting for the API token
-        //Redcap Data privacy attestation API
-        $KVS = \ExternalModules\ExternalModules::getModuleInstance('key-value-store');
-        $api_token = $KVS->getValue($project_id, "API_TOKEN");
+        $api_token = $this->getProjectSetting( 'api-token');
 
         $this_record = $_POST;
 // begin starr nav - added September 2019 in support of an abbreviated form when requesting starr nav access
@@ -58,10 +77,9 @@ class DpaSummary extends \ExternalModules\AbstractExternalModule {
             exit("STARR-Nav mid point, don't generate the summary just yet");
         }
 
-        $this->emDebug("HERE WE GO - line 74 record ".print_r($this_record, true));
+        $this->emDebug("HERE WE GO - line 57 record ".print_r($this_record, true));
 
 ///
-/// // TODO shorten method. move logic to different method. A role of thumb is method should not exceed 20 lines.
         if ($this_record['summarygeneration_complete'] == 2 && $this_record['approval_complete'] == 2) {
             // check to see whether this invocation comes from a Privacy approval action
             $users = REDCap::getUserRights (  );
@@ -73,7 +91,6 @@ class DpaSummary extends \ExternalModules\AbstractExternalModule {
             }
             $this->emDebug("summary already generated for ". $this_record['prj_project_title']." ". $this_record['prj_protocol_title']." by ".$this_record['webauth_user1']);
         }
-
 
 // begin starr nav - added September 2019 in support of an abbreviated form when requesting starr nav access
         if ($this_record['prj_type'] == 10) {
@@ -100,20 +117,14 @@ class DpaSummary extends \ExternalModules\AbstractExternalModule {
             $summary = "";
         }
 // end starr nav
-
-
-// carry on - the rest of this script generates a summary http://localhost/surveys/?s=THEX47FAHP7LDTFE
-//        $baseurlsurvey = "https://redcap.stanford.edu/webauth/surveys/index.php?s=L3TRTT9EF9&edit=1&prior_version_record_num=".$this_record['record_id']."&prj_type=".$this_record['prj_type']."&irb_or_determination=".$this_record['irb_or_determination'];
-// Ihab: how do I generate the survey URL without hard-coding it?
-        // TODO move base survey url to config.json
-        $baseurlsurvey = "http://localhost/surveys/?s=THEX47FAHP7LDTFE&prior_version_record_num=".$this_record['record_id']."&prj_type=".$this_record['prj_type']."&irb_or_determination=".$this_record['irb_or_determination'];
+        $baseurlsurvey = $this->getBaseUrlSurvey($this_record);
         // Get metadata for supplied API token
         $params = array(
             'token'=>$api_token,
             'content'=>'metadata',
             'format'=>'json',
         );
-        $meta = $this->getFromApi($params);
+        $meta = $this->post("", $params);
 
         // retrieve data dictionary and turn it into two hashmaps by record name, one for project information,
         // the other for the checkboxes for data elements
@@ -121,7 +132,6 @@ class DpaSummary extends \ExternalModules\AbstractExternalModule {
         $meta2 = array(); // stash everything - used for rendering the attestation wording in the summary
         $editurl = $baseurlsurvey;
 
-        // TODO create method to build edit url
         if ($this_record['prj_type'] == '1') {
             $editurl .= "&prj_protocol=".$this_record['prj_protocol']."&dtls_id=".$this_record['dtls_id']."&research_dececeased_only=".$this_record['research_dececeased_only'];
         } else {
@@ -167,7 +177,6 @@ class DpaSummary extends \ExternalModules\AbstractExternalModule {
             $this_record['is_irb'] = '';
         }
 
-        // TODO move build summary logic to a separate method.
         // Build our summary
         $is_recruitment = false;
         foreach ($meta_de as $key => $value) {
@@ -257,20 +266,15 @@ class DpaSummary extends \ExternalModules\AbstractExternalModule {
                 $summary .=  "\n". $meta2[$avar] . "\n";
             }
         }
-        // TODO why do you need this?
         date_default_timezone_set('America/Vancouver');
 
         $signature = "\nThis statement was digitally signed '" . $this_record['signature'] . "' on "  . date('F jS Y \a\t h:i:s A') . ' by SUNetID ' . $this_record['webauth_user1'];
         $short_summary .= $signature;
         $summary .= $signature;
 
-        // TODO move ldap url to config.json
-        // TODO move ldap call to a separate method.
         // last but not least look up the display name of the webauthed user
         $ldapUrl = "https://krb5-ldap-app-kbwg24yjgq-uw.a.run.app/webtools/redcap-ldap/redcap_validator_web_service.php?token=0dWhFQtgZN7VkCnDyzsoyZFoZGqKE4oALWMgs2K6JBkRZWS1dN&exact=true&only=displayname,sudisplaynamefirst,sudisplaynamelast,sudisplaynamelf,mail,telephonenumber,suaffiliation,sugwaffiliation1,ou,telephonenumber,suprimaryorganizationid,susunetid&username=";
 
-
-        // TODO use Guzzle client. Maybe create an object in the constructor so you do not have to init everytime you need to make a call.
         # Do LDAP Lookup
         $ldap = file_get_contents($ldapUrl . $this_record['webauth_user1']);
         //      $this->emDebug("ldap: $ldap", "DEBUG");
@@ -306,203 +310,23 @@ class DpaSummary extends \ExternalModules\AbstractExternalModule {
 
         $this->emDebug ('Data Privacy Attestation: ' . print_r($summary,true));
 
-
-/*$_POST
- submit-action = "submit-btn-saverecord"
- hidden_edit_flag = "1"
- __old_id__ = "1"
- record_id = "1"
- date_of_initial_completion = "2017-12-18 16:01:00"
- webauth_user1 = "eriking"
- org_id = "WFPS sdfasdf"
- ldap_department = "Medicine - Med/Cardiovascular Medicine"
- prj_type = "1"
- case_number = ""
- prj_other_type_desc = ""
- irb_or_determination = "1"
- irb_or_determination___radio = "1"
- prj_protocol = "44604"
- dtls_id = "155577"
- prj_protocol_title = "Studies of cardiovascular and metabolic diseases using data from the STARR data warehouse"
- prj_faculty_sponsor = "Erik Ingelsson"
- uploaded_supporting_doc = ""
- prj_qi_project_tracking_id = ""
- approx_number_patients = ""
- anon = ""
- __chk__d_full_name_RC_1 = ""
- __chk__d_full_name_RC_2 = "2"
- __chk__d_full_name_RC_3 = ""
- __chk__d_geographic_RC_1 = ""
- __chk__d_geographic_RC_2 = "2"
- __chk__d_geographic_RC_3 = ""
- __chk__d_dates_RC_1 = ""
- __chk__d_dates_RC_2 = "2"
- __chk__d_dates_RC_3 = ""
- __chk__d_telephone_RC_1 = ""
- __chk__d_telephone_RC_2 = ""
- __chk__d_telephone_RC_3 = ""
- __chk__d_fax_RC_1 = ""
- __chk__d_fax_RC_2 = ""
- __chk__d_fax_RC_3 = ""
- __chk__d_email_RC_1 = ""
- __chk__d_email_RC_2 = ""
- __chk__d_email_RC_3 = ""
- __chk__d_ssn_RC_1 = ""
- __chk__d_ssn_RC_2 = ""
- __chk__d_ssn_RC_3 = ""
- __chk__d_mrn_RC_1 = ""
- __chk__d_mrn_RC_2 = ""
- __chk__d_mrn_RC_3 = ""
- __chk__d_beneficiary_num_RC_1 = ""
- __chk__d_beneficiary_num_RC_2 = ""
- __chk__d_beneficiary_num_RC_3 = ""
- __chk__d_insurance_num_RC_1 = ""
- __chk__d_insurance_num_RC_2 = ""
- __chk__d_insurance_num_RC_3 = ""
- __chk__d_certificate_num_RC_1 = ""
- __chk__d_certificate_num_RC_2 = ""
- __chk__d_certificate_num_RC_3 = ""
- __chk__d_vehicle_num_RC_1 = ""
- __chk__d_vehicle_num_RC_2 = ""
- __chk__d_vehicle_num_RC_3 = ""
- __chk__d_device_num_RC_1 = ""
- __chk__d_device_num_RC_2 = ""
- __chk__d_device_num_RC_3 = ""
- __chk__d_urls_RC_1 = ""
- __chk__d_urls_RC_2 = ""
- __chk__d_urls_RC_3 = ""
- __chk__d_ips_RC_1 = ""
- __chk__d_ips_RC_2 = ""
- __chk__d_ips_RC_3 = ""
- __chk__d_identifying_image_RC_1 = ""
- __chk__d_identifying_image_RC_2 = ""
- __chk__d_identifying_image_RC_3 = ""
- __chk__d_other_phi_RC_1 = ""
- __chk__d_other_phi_RC_2 = ""
- __chk__d_other_phi_RC_3 = ""
- __chk__d_hospital_costs_RC_1 = ""
- __chk__d_hospital_costs_RC_2 = ""
- __chk__d_hospital_costs_RC_3 = ""
- __chk__d_demographics_RC_1 = ""
- __chk__d_demographics_RC_2 = "2"
- __chk__d_demographics_RC_3 = ""
- __chk__d_lab_results_RC_1 = ""
- __chk__d_lab_results_RC_2 = "2"
- __chk__d_lab_results_RC_3 = ""
- __chk__d_diag_proc_RC_1 = ""
- __chk__d_diag_proc_RC_2 = "2"
- __chk__d_diag_proc_RC_3 = ""
- __chk__d_psych_eval_RC_1 = ""
- __chk__d_psych_eval_RC_2 = ""
- __chk__d_psych_eval_RC_3 = ""
- __chk__d_clinical_RC_1 = ""
- __chk__d_clinical_RC_2 = "2"
- __chk__d_clinical_RC_3 = ""
- __chk__d_medications_RC_1 = ""
- __chk__d_medications_RC_2 = "2"
- __chk__d_medications_RC_3 = ""
- __chk__d_radiology_RC_1 = ""
- __chk__d_radiology_RC_2 = "2"
- __chk__d_radiology_RC_3 = ""
- __chk__d_other_image_RC_1 = ""
- __chk__d_other_image_RC_2 = ""
- __chk__d_other_image_RC_3 = ""
- __chk__d_other_non_phi_RC_1 = ""
- __chk__d_other_non_phi_RC_2 = ""
- __chk__d_other_non_phi_RC_3 = ""
- __chk__d_clinical_deid_RC_1 = ""
- __chk__d_clinical_deid_RC_2 = ""
- __chk__d_clinical_deid_RC_3 = ""
- __chk__d_radiology_deid_RC_1 = ""
- __chk__d_radiology_deid_RC_2 = ""
- __chk__d_radiology_deid_RC_3 = ""
- de_identifier_other_desc = ""
- de_medical_other_desc = ""
- dicom_yn = ""
- research_dececeased_only = "0"
- research_dececeased_only___radio = "0"
- ex_us_inbound = "0"
- ex_us_inbound___radio = "0"
- ex_us_outbound = "0"
- ex_us_outbound___radio = "0"
- __chk__attest_1_RC_1 = "1"
- __chk__attest_2_RC_1 = "1"
- __chk__attest_3_RC_1 = "1"
- __chk__attest_4_RC_1 = "1"
- __chk__attest_5_RC_1 = "1"
- __chk__attest_6_RC_1 = "1"
- __chk__attest_7_RC_1 = "1"
- __chk__attest_14_RC_1 = "1"
- signature = "Erik Ingelsson"
- telephonenumber = "(650) 723-7614"
- mail = "eriking@stanford.edu"
- feedback = ""
- prior_version_record_num = ""
- is_most_recent = "1"
- is_most_recent___radio = "1"
- edit = ""
- phi_worksheet_complete = "2"
- empty-required-field = {array[20]}
- prep_to_rsrch_phi = ""
- hsr_determination = ""
- prep_rsrch_phi_justify = ""
- prj_project_title = ""
- prj_project_description = ""
- dicom_download_or_read = ""
- dicom_deid_ok = ""
- dicom_crosswalk_mrn = ""
- dicom_crosswalk_accession = ""
- dicom_dates = ""
- recruitment_approach = ""
- __chk__recruitment_approach_2_RC_2 = ""
- __chk__recruitment_approach_2_RC_3 = ""
- __chk__recruitment_approach_2_RC_4 = ""
- __chk__recruitment_approach_2_RC_88 = ""
- ex_us_inbound_countries = ""
- ex_us_countries_2 = ""
- data_use_agreement = ""
- __chk__attest_9_RC_1 = ""
- __chk__attest_11_RC_1 = ""
- __chk__attest_8_RC_1 = ""
- __chk__attest_12_RC_1 = ""
- __chk__attest_10_RC_1 = ""*/
-
     }
-/*
 
-       */
-    function getFromApi($params) {
-
-        $api_url = "//" .  $_SERVER['HTTP_HOST'] . "/api";
+    function getGuzzleClient(): \GuzzleHttp\Client
+    {
 
         $guzzle = new \GuzzleHttp\Client([
                 'timeout' => 30,
                 'connect_timeout' => 5,
-                'verify' => $this->isDisableVerification(),
+                'verify' => $this->getProjectSetting( 'verify-api-call'),
             ]
         );
-        $response = $guzzle->get($api_url );
-
-        $r = curl_init($api_url);
-        curl_setopt($r, CURLOPT_POST, 1);
-        curl_setopt($r, CURLOPT_POSTFIELDS, http_build_query($params));
-        curl_setopt($r, CURLOPT_RETURNTRANSFER, 1);
-        $r_result = curl_exec($r);
-        $r_error = curl_error($r);
-        curl_close($r);
-        if ($r_error) {
-            $this->emDebug("Curl call failed ($r_error) with params (".json_encode($params).")", 'ERROR');
-            exit;
-        }
-        $results = json_decode($r_result,true);
-        //$this->emDebug("Results: ".print_r($results,true), "DEBUG");
-        return $results;
+        return $guzzle;
     }
 
     /* Call this to store data */
     function putRecord($data, $api_token)
     {
-        // TODO create a method to pull $api_url from either config.json or $_SERVER['HTTP_HOST']
         global $api_url;
         $params = array(
             'token' => $api_token,
@@ -513,20 +337,6 @@ class DpaSummary extends \ExternalModules\AbstractExternalModule {
         );
         // $this->emDebug('putRecord PARAMS: ' . print_r($params,true), "DEBUG");	//DEBUG
 
-        // TODO use Guzzle Client for more details: https://docs.guzzlephp.org/en/stable/request-options.html
-        //        $client = new \GuzzleHttp\Client([
-        //                'timeout' => 30,
-        //                'connect_timeout' => 5,
-        //                'verify' => true/false,
-        //            ]
-        //        );
-        //        $response = $client->post($api_url, [
-        //            'debug' => false,
-        //            'body' => json_encode($params),
-        //            'headers' => ['Content-Type' => 'application/json', 'Accept' => 'application/json'],
-        //        ]);
-
-        $client = new  \GuzzleHttp\Client();
         $r = curl_init($api_url);
         curl_setopt($r, CURLOPT_POST, 1);
         curl_setopt($r, CURLOPT_POSTFIELDS, http_build_query($params));
@@ -542,6 +352,22 @@ class DpaSummary extends \ExternalModules\AbstractExternalModule {
         $this->emDebug("ArrResult: " . print_r($arr_result,true), 'DEBUG');
         $this->emDebug("Set ".implode(',',array_keys($data))." for record: ".$arr_result['count']);
     }
-
+    /**
+     * Global Post method
+     * @param string $path
+     * @param array $data
+     * @return \Psr\Http\Message\ResponseInterface|void
+     * @throws \Exception
+     */
+    public function post(string $path, array $data)
+    {
+        $api_url = $this->getBaseUrl() . "api/";
+        $response = $this->getGuzzleClient()->post( $api_url . $path, [
+            'debug' => true,
+            'form_params' => $data,
+            'headers' => ['Content-Type' => 'application/json', 'Accept' => 'application/json'],
+        ]);
+        return $response;
+    }
 
 }
