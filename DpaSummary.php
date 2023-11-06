@@ -49,7 +49,13 @@ class DpaSummary extends \ExternalModules\AbstractExternalModule
         }
         $api_token = $this->getProjectSetting('api-token');
 
-        $this_record = $_POST;
+        $param = array(
+            'project_id' => $project_id,
+            'return_format' => 'array',
+            'records' => [$record]
+        );
+        $data = \REDCap::getData($param);
+        $this_record = $data[1][$event_id];
 // begin starr nav - added September 2019 in support of an abbreviated form when requesting starr nav access
         if ($this_record['prj_type'] == 10) {
             $data = array(
@@ -129,7 +135,7 @@ class DpaSummary extends \ExternalModules\AbstractExternalModule
             'content' => 'metadata',
             'format' => 'json',
         );
-        $meta = $this->post("", $params);
+        $meta = $this->post($params);
 
         // retrieve data dictionary and turn it into two hashmaps by record name, one for project information,
         // the other for the checkboxes for data elements
@@ -138,7 +144,7 @@ class DpaSummary extends \ExternalModules\AbstractExternalModule
         $editurl = $baseurlsurvey;
 
         if ($this_record['prj_type'] == '1') {
-            $editurl .= "&prj_protocol=" . $this_record['prj_protocol'] . "&dtls_id=" . $this_record['dtls_id'] . "&research_dececeased_only=" . $this_record['research_dececeased_only'];
+            $editurl .= "&prj_protocol=" . $this_record['prj_protocol'] . "&dtls_id=" . $this_record['dtls_id'] . "&research_dececeased_only=" . $this_record['research_dececeased_only']; // yes, that is how the variable is spelled
         } else {
             $editurl .= "&prj_project_description=" . urlencode($this_record['prj_project_description']);
         }
@@ -153,26 +159,7 @@ class DpaSummary extends \ExternalModules\AbstractExternalModule
             if (substr($fieldname, 0, 2) === 'd_') {
                 $meta_de[$fieldname] = strip_tags($value['field_label']);
             }
-            if (substr($fieldname, 0, 4) === 'prj_') {
-//            $this->emDebug("BINGO ".$fieldname. ' val '.print_r($this_record[$fieldname], true));
-                if ('prj_type' === $fieldname) {
-//                $this->emDebug("LOOPING ");
-                    for ($i = 0; $i < 8; $i++) {
-//                    $this->emDebug("LOOKING FOR prj_type___".$i);
-                        if ($this_record['prj_type___' . $i] == 1) {
-//                        $this->emDebug("FOUND IT");
-                            $editurl .= "&prj_type___" . $i . "=1";
-                        }
-                    }
-                    if ($this_record['prj_type___99'] == 1) {
-                        $editurl .= "&prj_type___99=1";
-                    }
-                } else {
-                    if (strlen($this_record[$fieldname]) > 0) {
-                        $editurl .= "&" . $fieldname . "=" . urlencode($this_record[$fieldname]);
-                    }
-                }
-            }
+
             $meta2[$fieldname] = strip_tags($value['field_label']);
         }
 
@@ -186,7 +173,7 @@ class DpaSummary extends \ExternalModules\AbstractExternalModule
         $is_recruitment = false;
         foreach ($meta_de as $key => $value) {
 
-            if ($this_record[$key . '___1'] == 1) {
+            if ($this_record[$key ][1] == 1) {
                 if (!$is_recruitment) {
                     $summary .= "We will be working with the following types of data in support of recruitment activities:\n";
                     $is_recruitment = true;
@@ -200,7 +187,7 @@ class DpaSummary extends \ExternalModules\AbstractExternalModule
         $is_internal_use = false;
         foreach ($meta_de as $key => $value) {
 
-            if ($this_record[$key . '___2'] == 1) {
+            if ($this_record[$key][2] == 1) {
                 if (!$is_internal_use) {
                     $summary .= "\nWe will be internally using at Stanford the following types of data:\n";
                     $is_internal_use = true;
@@ -214,7 +201,7 @@ class DpaSummary extends \ExternalModules\AbstractExternalModule
         $is_external_use = false;
         foreach ($meta_de as $key => $value) {
 
-            if ($this_record[$key . '___3'] == 1) {
+            if ($this_record[$key][3] == 1) {
                 if (!$is_external_use) {
                     $summary .= "\nWe will be disclosing outside Stanford the following types of data:\n";
                     $is_external_use = true;
@@ -226,7 +213,7 @@ class DpaSummary extends \ExternalModules\AbstractExternalModule
         }
 
         // and if they are looking at narrative records
-        if ($this_record['d_clinical___1'] === '1' || $this_record['d_radiology___1'] === 1 || $this_record['d_clinical___2'] === '1' || $this_record['d_radiology___2'] === 1 || $this_record['d_clinical___3'] === '1' || $this_record['d_radiology___3'] === 1) {
+        if ($this_record['d_clinical'][1] == 1 || $this_record['d_radiology'][1] == 1 || $this_record['d_clinical'][2] == 1 || $this_record['d_radiology'][2] == 1 || $this_record['d_clinical'][3] == 1 || $this_record['d_radiology'][3] == 1) {
             $summary .= "\nFurthermore since we will be working with free text narratives we may be incidentally exposed to the following:\n1. Names\n3. Telephone numbers\n4. Address\n5. Dates more precise than year only\n7. Electronic mail addresses\n8. Medical record numbers\n18. Any other unique identifying number, characteristic, or code\n\n";
         }
 
@@ -267,7 +254,7 @@ class DpaSummary extends \ExternalModules\AbstractExternalModule
 
         for ($i = 1; $i <= 18; $i++) {
             $avar = 'attest_' . $i;
-            if ($this_record[$avar . '___1'] == 1) {
+            if ($this_record[$avar ][1] == 1) {
                 $summary .= "\n" . $meta2[$avar] . "\n";
             }
         }
@@ -332,7 +319,6 @@ class DpaSummary extends \ExternalModules\AbstractExternalModule
     /* Call this to store data */
     function putRecord($data, $api_token)
     {
-        global $api_url;
         $params = array(
             'token' => $api_token,
             'content' => 'record',
@@ -340,22 +326,7 @@ class DpaSummary extends \ExternalModules\AbstractExternalModule
             'type' => 'flat',
             'data' => json_encode(array($data))
         );
-        // $this->emDebug('putRecord PARAMS: ' . print_r($params,true), "DEBUG");	//DEBUG
-
-        $r = curl_init($api_url);
-        curl_setopt($r, CURLOPT_POST, 1);
-        curl_setopt($r, CURLOPT_POSTFIELDS, http_build_query($params));
-        curl_setopt($r, CURLOPT_RETURNTRANSFER, 1);
-        $r_result = curl_exec($r);
-        $r_error = curl_error($r);
-        curl_close($r);
-        if ($r_error) {
-            $this->emDebug("PutRecord Curl call failed ($r_error) with params (" . json_encode($params) . ")", 'ERROR');
-            exit;
-        }
-        $arr_result = json_decode($r_result, true);
-        $this->emDebug("ArrResult: " . print_r($arr_result, true), 'DEBUG');
-        $this->emDebug("Set " . implode(',', array_keys($data)) . " for record: " . $arr_result['count']);
+        return $this->post($params);
     }
 
     /**
@@ -365,12 +336,12 @@ class DpaSummary extends \ExternalModules\AbstractExternalModule
      * @return \Psr\Http\Message\ResponseInterface|void
      * @throws \Exception
      */
-    public function post(string $path, array $data)
+    public function post( array $data)
     {
         try {
             $api_url = $this->getBaseUrl() . "api/";
             $response = $this->getGuzzleClient()->post($api_url, [
-                'debug' => true,
+                'debug' => false,
                 'form_params' => $data,
                 'headers' => ['Accept' => 'application/json'],
             ]);
