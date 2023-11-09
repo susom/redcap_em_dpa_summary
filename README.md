@@ -41,32 +41,32 @@ The summary takes the following form:
 
 -------
 
-*If PHI used for recruitment
+### If PHI used for recruitment
 We will be working with the following types of data in support of recruitment activities:
 <list of selected PHI>
 
-*If PHI used internally
+### If PHI used internally
 We will be internally using at Stanford the following types of data:
 <list of selected PHI>
 
-*If PHI disclosed
+### If PHI disclosed
 We will be disclosing outside Stanford the following types of data:
 <list of selected PHI>
 
-*If working with free text
+### If working with free text
 Furthermore since we will be working with free text narratives we may be incidentally exposed to the following:
-1. Names
-3. Telephone numbers
-4. Address
-5. Dates more precise than year only
-7. Electronic mail addresses
-8. Medical record numbers
-18. Any other unique identifying number, characteristic, or code
+ 1. Names
+ 3. Telephone numbers
+ 4. Address
+ 5. Dates more precise than year only
+ 7. Electronic mail addresses
+ 8. Medical record numbers
+ 18. Any other unique identifying number, characteristic, or code
 
-*If collecting data outside US
+### If collecting data outside US
 We will be collecting data outside the US, in <listed countries>
 
-*If sending data outside US
+### If sending data outside US
 We will be sending data outside the US, to <listed countries>
 -------
 ## To enable a new UPO team member to edit / approve DPAs
