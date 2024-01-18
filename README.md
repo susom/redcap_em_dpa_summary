@@ -40,8 +40,6 @@ As of January 2024 we are still integrated with eProtocol using the plugin, name
 
 That URL is hard-coded into the .jsp pages used to render eProtocol section 11b, the hyperlink "Data Privacy Attestation". eProtocol sends two additional query parameters, irb and version. So for example to call up the existing DPA for IRB 13655, go to redcap.stanford.edu/plugins/approvals/privacy/index.php?irb=13655&version=200. If there is no DPA yet in REDCap for the supplied IRB#, you see a new survey. Otherwise, you get a rendering of the information in the most recent DPA for that IRB. In this case, if you supply a number for the current version that is less than the approved version in the eProtocol system, you don't see an Edit button. If the number is larger, the Edit button is shown.  The idea here is that approved DPAs should be read-only.
 
-index.php is also run automatically (as a plugin) by REDCap when survey results are saved.
-
 Note the onload attribute in the HTML body tag in index.php:
 ```
 <body onload="window.opener.postMessage(window.document.getElementById('attst').innerHTML,'https://eprotocol.stanford.edu/');">
@@ -52,6 +50,14 @@ In the .jsp pages for eProtocol an event listener is set up
 window.addEventListener('message', processMessage, false);
 ```
 And there is further code in their processMessage callback to take the text from the incoming message and insert it into a read-only field in eProtocol.
+
+So when the Edit button is clicked or the supplied IRB does not yet have a DPA, the HTML written back to the browser contains the following header
+```
+Location: https://redcap.stanford.edu/surveys/index.php?s=L3TRTT9EF9&prj_type=1& ... the irb and version number pre-filled
+```
+Note the details ID is a hidden field on the survey that is populated by the query params in the URL in the location header.
+
+index.php is also run automatically (as a plugin) by REDCap when survey results are saved but it's not clear whether this is used or needed?
 
 Ihab has met with Arvind Taranath and his colleague James to review how this all works
 
