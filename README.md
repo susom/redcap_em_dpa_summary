@@ -8,7 +8,44 @@ The intent of the DPA is a formal listing of clinical data elements and PHI that
 
 As of November 2023, the DPA is still implemented as a REDCap plugin, though this project is intended to change that. The plugin is (and this EM will be) configured on REDCap PID 9883, "Data Privacy Attestation", which has been the primary attestation REDCap since 2018. There are multiple earlier REDCaps but only PID 4734 is also consulted for primary attestations by the STARR compliance API. Everyone who uses STARR Tools has filled out at least one, sometimes more, record(s) in PID 9883 or an add-on record in PID 12935.
 
-This document describes what to do when asked about DPAs.
+This document how the system currently works and describes what to do when asked about DPAs.
+
+## Plugin Operation
+As of January 2024 we are still integrated with eProtocol using the plugin, namely, redcap.stanford.edu/plugins/approvals/privacy/index.php
+
+That URL is hard-coded into the .jsp pages used to render eProtocol section 11b, the hyperlink "Data Privacy Attestation". eProtocol sends two additional query parameters, irb and version. So for example to call up the existing DPA for IRB 13655, go to redcap.stanford.edu/plugins/approvals/privacy/index.php?irb=13655&version=200. If there is no DPA yet in REDCap for the supplied IRB#, you see a new survey. Otherwise, you get a rendering of the information in the most recent DPA for that IRB. In this case, if you supply a number for the current version that is less than the approved version in the eProtocol system, you don't see an Edit button. If the number is larger, the Edit button is shown.  The idea here is that approved DPAs should be read-only.
+
+Note the onload attribute in the HTML body tag in index.php:
+```
+<body onload="window.opener.postMessage(window.document.getElementById('attst').innerHTML,'https://eprotocol.stanford.edu/');">
+```
+And a summary div, 
+```
+<div id="attst" style="display: none"><?php echo $summary_for_irb ?></div>
+```
+which contains the summary content posted to eProtocol by the onload postMessage
+
+In the .jsp pages for eProtocol an event listener is set up
+```
+window.addEventListener('message', processMessage, false);
+```
+And there is further code in their processMessage callback to take the text from the incoming message and insert it into a read-only field in eProtocol.
+
+When the Edit button is clicked or the supplied IRB does not yet have a DPA, the HTML written back to the browser contains the following header
+```
+Location: https://redcap.stanford.edu/surveys/index.php?s=L3TRTT9EF9&prj_type=1& ... the irb and version number pre-filled
+```
+Note the details ID is a hidden field on the survey that is populated by the query params in the URL in the location header.
+
+generatesummary.php is run automatically (as a plugin) by REDCap when survey results are saved. The same summary that gets inserted into eProtocol winds up in the Privacy instrument of the survey, so they can cross check.
+
+Ihab has met with Arvind Taranath and his colleague James to review how this all works
+
+## EM Operation
+
+As of January 2024 the EM is not yet live. Before going live with this, please conduct testing with Arvind, arvind.taranath@stanford.edu.
+
+To make changes to summary generation, edit DpaSummary.php in this repo.
 
 ## To tutor a new researcher on how to correctly use the system
 Point new researchers to the extensive documentation on the [STARR Tools site](https://med.stanford.edu/starr-tools.html). The key points to convey are
@@ -34,38 +71,6 @@ As of Sept 2022 add-on attestations are all in PID 12935. This project went live
 In the rare case where the IRB and Privacy agree that wording changes are needed, you will need to modify not only the REDCap project e.g. by adding a new question or altering the wording or answer options of an existing question, but also amend how the summary is generated. *The summary is created by this plugin.*
 
 The RIC and the UPO are both able to edit PID 9883.
-
-## Plugin Operation
-As of January 2024 we are still integrated with eProtocol using the plugin, namely, redcap.stanford.edu/plugins/approvals/privacy/index.php
-
-That URL is hard-coded into the .jsp pages used to render eProtocol section 11b, the hyperlink "Data Privacy Attestation". eProtocol sends two additional query parameters, irb and version. So for example to call up the existing DPA for IRB 13655, go to redcap.stanford.edu/plugins/approvals/privacy/index.php?irb=13655&version=200. If there is no DPA yet in REDCap for the supplied IRB#, you see a new survey. Otherwise, you get a rendering of the information in the most recent DPA for that IRB. In this case, if you supply a number for the current version that is less than the approved version in the eProtocol system, you don't see an Edit button. If the number is larger, the Edit button is shown.  The idea here is that approved DPAs should be read-only.
-
-Note the onload attribute in the HTML body tag in index.php:
-```
-<body onload="window.opener.postMessage(window.document.getElementById('attst').innerHTML,'https://eprotocol.stanford.edu/');">
-```
-
-In the .jsp pages for eProtocol an event listener is set up
-```
-window.addEventListener('message', processMessage, false);
-```
-And there is further code in their processMessage callback to take the text from the incoming message and insert it into a read-only field in eProtocol.
-
-So when the Edit button is clicked or the supplied IRB does not yet have a DPA, the HTML written back to the browser contains the following header
-```
-Location: https://redcap.stanford.edu/surveys/index.php?s=L3TRTT9EF9&prj_type=1& ... the irb and version number pre-filled
-```
-Note the details ID is a hidden field on the survey that is populated by the query params in the URL in the location header.
-
-index.php is also run automatically (as a plugin) by REDCap when survey results are saved but it's not clear whether this is used or needed?
-
-Ihab has met with Arvind Taranath and his colleague James to review how this all works
-
-## EM Operation
-
-As of January 2024 the EM is not yet live. Before going live with this, please conduct testing with Arvind, arvind.taranath@stanford.edu.
-
-To make changes to summary generation, edit DpaSummary.php in this repo.
 
 The summary takes the following form:
 
