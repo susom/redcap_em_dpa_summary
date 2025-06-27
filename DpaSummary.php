@@ -265,7 +265,7 @@ class DpaSummary extends \ExternalModules\AbstractExternalModule
         $summary .= $signature;
 
         // last but not least look up the display name of the webauthed user
-        $ldapUrl = "https://krb5-ldap-app-kbwg24yjgq-uw.a.run.app/webtools/redcap-ldap/redcap_validator_web_service.php?token=0dWhFQtgZN7VkCnDyzsoyZFoZGqKE4oALWMgs2K6JBkRZWS1dN&exact=true&only=displayname,sudisplaynamefirst,sudisplaynamelast,sudisplaynamelf,mail,telephonenumber,suaffiliation,sugwaffiliation1,ou,telephonenumber,suprimaryorganizationid,susunetid&username=";
+        $ldapUrl = "http://127.0.0.1:8080/webtools/redcap-ldap/redcap_validator_web_service.php?token=0dWhFQtgZN7VkCnDyzsoyZFoZGqKE4oALWMgs2K6JBkRZWS1dN&exact=true&only=displayname,sudisplaynamefirst,sudisplaynamelast,sudisplaynamelf,mail,telephonenumber,suaffiliation,sugwaffiliation1,ou,telephonenumber,suprimaryorganizationid,susunetid&username=";
 
         # Do LDAP Lookup
         $ldap = file_get_contents($ldapUrl . $this_record['webauth_user1']);
