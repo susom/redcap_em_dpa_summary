@@ -11,9 +11,9 @@
 
     "authors": [
         {
-            "name": "Susan Weber",
-            "email": "scweber@stanford.edu",
-            "institution": "StanfordMedicine"
+            "name": "Ihab Zeedia",
+            "email": "ihabz@stanford.edu",
+            "institution": "Stanford University"
         }
     ],
 
@@ -59,7 +59,12 @@
     ],
 
     "system-settings": [
-
+        {
+            "key": "krb5-api-token",
+            "name": "<b>KRB5 Plugin API Token</b>",
+            "required": true,
+            "type": "text"
+        }
     ],
 
     "crons": [
