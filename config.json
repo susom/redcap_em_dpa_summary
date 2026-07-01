@@ -36,7 +36,12 @@
     ],
 
     "system-settings": [
-
+        {
+            "key": "krb5-api-token",
+            "name": "<b>KRB5 Plugin API Token</b>",
+            "required": true,
+            "type": "text"
+        }
     ],
 
     "crons": [

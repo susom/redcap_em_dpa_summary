@@ -266,8 +266,9 @@ class DpaSummary extends \ExternalModules\AbstractExternalModule {
 
         // TODO move ldap url to config.json
         // TODO move ldap call to a separate method.
+        $token = $this->getSystemSetting('krb5-api-token')?:'';
         // last but not least look up the display name of the webauthed user
-        $ldapUrl = "https://krb5-ldap-app-kbwg24yjgq-uw.a.run.app/webtools/redcap-ldap/redcap_validator_web_service.php?token=***REMOVED***&exact=true&only=displayname,sudisplaynamefirst,sudisplaynamelast,sudisplaynamelf,mail,telephonenumber,suaffiliation,sugwaffiliation1,ou,telephonenumber,suprimaryorganizationid,susunetid&username=";
+        $ldapUrl = "https://krb5-ldap-app-kbwg24yjgq-uw.a.run.app/webtools/redcap-ldap/redcap_validator_web_service.php?token=$token&exact=true&only=displayname,sudisplaynamefirst,sudisplaynamelast,sudisplaynamelf,mail,telephonenumber,suaffiliation,sugwaffiliation1,ou,telephonenumber,suprimaryorganizationid,susunetid&username=";
 
 
         // TODO use Guzzle client. Maybe create an object in the constructor so you do not have to init everytime you need to make a call.
